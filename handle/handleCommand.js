@@ -22,6 +22,9 @@ module.exports = async function({ event, api, userData }) {
     const { body, senderID, threadID, messageID, mentions } = event;
     if (!body) return;
 
+    // تعليم الرسالة كمقروءة فور استلامها لتقليل الشبهات
+    try { api.markAsRead(threadID); } catch (e) {}
+
     const { config, commands } = global.client;
     const prefix = config.PREFIX || ".";
 
@@ -131,8 +134,13 @@ module.exports = async function({ event, api, userData }) {
     }
 
     if (global.botMode === 'hybrid' || global.botMode === 'agent') {
+        // إظهار مؤشر الكتابة عند بدء معالجة الذكاء الاصطناعي
+        let stopTyping;
+        try { stopTyping = api.sendTypingIndicator(threadID); } catch (e) {}
+
         try {
             const response = await agent.chat(senderID, user.name, user, body, api, event, userRole);
+            if (stopTyping) stopTyping(); // إيقاف المؤشر بعد الانتهاء
             if (response) {
                 return api.sendMessage(response, threadID, (err, info) => {
                     if (err) return;
