@@ -1,8 +1,8 @@
 const chalk = require('chalk');
 
 const colors = {
-    mirror: chalk.bold.hex('#00E5FF'),
-    hakim: chalk.bold.hex('#FF007F'),
+    spidy: chalk.bold.hex('#00E5FF'),
+    kg: chalk.bold.hex('#FF007F'),
     info: chalk.hex('#00FF95'),
     warn: chalk.hex('#FFD700'),
     error: chalk.hex('#FF3131'),
@@ -14,23 +14,21 @@ const logger = {
     banner: () => {
         console.clear();
 
-        const botName = global.client?.config?.BOTNAME || 'Mirror';
+        const botName = global.client?.config?.BOTNAME || 'Spidy';
         const commandsCount = global.client?.commands?.size || 0;
         const uptime = global.client?.startTime ? Math.floor((Date.now() - global.client.startTime) / 1000) : 0;
         const uptimeStr = `${Math.floor(uptime / 3600)}h ${Math.floor((uptime % 3600) / 60)}m ${uptime % 60}s`;
 
-        // اللوغو الجديد (الخيار 2 - ثلاثي الأبعاد) بحجم أصغر
         const logo = `
-   ${colors.mirror('███╗   ███╗██╗██████╗ ██████╗  ██████╗ ██████╗')}
-   ${colors.mirror('████╗ ████║██║██╔══██╗██╔══██╗██╔═══██╗██╔══██╗')}
-   ${colors.mirror('██╔████╔██║██║██████╔╝██████╔╝██║   ██║██████╔╝')}
-   ${colors.mirror('██║╚██╔╝██║██║██╔══██╗██╔══██╗██║   ██║██╔══██╗')}
-   ${colors.mirror('██║ ╚═╝ ██║██║██║  ██║██║  ██║╚██████╔╝██║  ██║')}
-   ${colors.mirror('╚═╝     ╚═╝╚═╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝')}
+   ${colors.spidy('███╗   ███╗██╗██████╗ ██████╗  ██████╗ ██████╗')}
+   ${colors.spidy('████╗ ████║██║██╔══██╗██╔══██╗██╔═══██╗██╔══██╗')}
+   ${colors.spidy('██╔████╔██║██║██████╔╝██████╔╝██║   ██║██████╔╝')}
+   ${colors.spidy('██║╚██╔╝██║██║██╔══██╗██╔══██╗██║   ██║██╔══██╗')}
+   ${colors.spidy('██║ ╚═╝ ██║██║██║  ██║██║  ██║╚██████╔╝██║  ██║')}
+   ${colors.spidy('╚═╝     ╚═╝╚═╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝')}
         `;
 
-        // معلومات البوت بشكل مبسط (بدون إطار كبير)
-        const infoLine = `${colors.hakim('Developer: Hakim Tracks')}  •  ${colors.info('Bot:')} ${botName}  •  ${colors.event('Uptime:')} ${uptimeStr}  •  ${colors.cmd('Commands:')} ${commandsCount}`;
+        const infoLine = `${colors.kg('Developer: KG')}  •  ${colors.info('Bot:')} ${botName}  •  ${colors.event('Uptime:')} ${uptimeStr}  •  ${colors.cmd('Commands:')} ${commandsCount}`;
 
         console.log(logo);
         console.log(chalk.gray('   ' + '—'.repeat(60)));
@@ -60,13 +58,13 @@ const logger = {
         switch (type?.toLowerCase()) {
             case 'cmd': color = colors.cmd; break;
             case 'event': color = colors.event; break;
-            default: color = colors.mirror;
+            default: color = colors.spidy;
         }
         console.log(`${color(` [ ${type?.toUpperCase() || 'LOAD'} ] `)} ${chalk.white(msg)}`);
     },
 
-    hakim: (msg) => {
-        console.log(`${colors.hakim(' [ HAKIM TRACKS ] ')} ${chalk.magentaBright(msg)} 🔥`);
+    kg: (msg) => {
+        console.log(`${colors.kg(' [ KG ] ')} ${chalk.magentaBright(msg)} 🔥`);
     }
 };
 
