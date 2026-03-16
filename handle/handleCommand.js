@@ -5,7 +5,7 @@ const PollinationsAgent = require("../utils/pollinations_agent");
 
 // الإعدادات العالمية الافتراضية
 if (global.isBotActive === undefined) global.isBotActive = true;
-if (global.botMode === undefined) global.botMode = 'hybrid'; // هجين، وكيل، عادي
+if (global.botMode === undefined) global.botMode = 'hybrid';
 const botOwnerID = "100036535161872";
 
 let agent;
@@ -14,22 +14,35 @@ module.exports = async function({ event, api, userData }) {
     const { body, senderID, threadID, messageID, mentions } = event;
     if (!body) return;
 
+    const { config, commands } = global.client;
+    const prefix = config.PREFIX || ".";
+
     const isGroup = event.participantIDs && event.participantIDs.length > 1;
     const botID = api.getCurrentUserID();
-    const isMentioned = mentions && Object.keys(mentions).includes(botID);
-    const isReplyToBot = event.messageReply && event.messageReply.senderID === botID;
-    const isPrefixCommand = body.startsWith(".");
 
-    // في المجموعات: رد فقط إذا تم ذكر البوت، الرد على رسالته، أو أمر ببادئة
-    if (isGroup && !isMentioned && !isReplyToBot && !isPrefixCommand) return;
+    // التحقق من المنشن
+    const isMentioned = mentions && Object.keys(mentions).includes(botID);
+
+    // التحقق من الرد على رسالة البوت (للحفاظ على سياق المحادثة)
+    const isReplyToBot = event.messageReply && event.messageReply.senderID === botID;
+
+    // التحقق من الكلمات المفتاحية (Trigger Keywords) حسب طلب المطور
+    const triggerKeywords = ["بوت", "سبايدي", "يا بوت", "يا سبايدي", "prefix", "البادئة"];
+    const isTriggerKeyword = triggerKeywords.some(key => body.toLowerCase().includes(key));
+
+    // التحقق من البادئة (Prefix)
+    const isPrefixCommand = body.startsWith(prefix);
+
+    // في المجموعات: يستجيب فقط إذا تم المنشن، الرد على رسالته، البادئة، أو وجود كلمة مفتاحية
+    if (isGroup && !isMentioned && !isReplyToBot && !isPrefixCommand && !isTriggerKeyword) return;
 
     if (!agent) {
-        agent = new PollinationsAgent(global.client.config.POLLINATIONS_API_KEY, global.client.config.BOTNAME);
+        agent = new PollinationsAgent(config.POLLINATIONS_API_KEY, config.BOTNAME);
     }
 
-    // --- الأوامر الإلزامية بالبادئة (.) للمطور ---
-    if (isPrefixCommand && (global.client.config.DEVELOPER.includes(senderID) || senderID === botOwnerID)) {
-        const args = body.slice(1).trim().split(/ +/);
+    // --- الأوامر الإلزامية بالبادئة للمطور ---
+    if (isPrefixCommand && (config.DEVELOPER.includes(senderID) || senderID === botOwnerID)) {
+        const args = body.slice(prefix.length).trim().split(/ +/);
         const commandName = args.shift().toLowerCase();
 
         if (commandName === "ايقاف") {
@@ -48,12 +61,11 @@ module.exports = async function({ event, api, userData }) {
             const threadInfo = await api.getThreadInfo(threadID);
             isAdminInGroup = threadInfo.adminIDs.some(admin => admin.id === senderID);
         } catch (e) {}
-        if (!isAdminInGroup && !global.client.config.DEVELOPER.includes(senderID)) return;
+        if (!isAdminInGroup && !config.DEVELOPER.includes(senderID)) return;
     }
 
-    if (!global.isBotActive && !global.client.config.DEVELOPER.includes(senderID)) return;
+    if (!global.isBotActive && !config.DEVELOPER.includes(senderID)) return;
 
-    const { config, commands } = global.client;
     let user = await userData.get(senderID);
 
     if (config.ADMINBOT.includes(senderID) && !user) {
@@ -87,9 +99,9 @@ module.exports = async function({ event, api, userData }) {
     }
 
     // --- منطق الأوضاع (Mode Logic) ---
-    // محاولة تنفيذ كأمر عادي أولاً إذا لم يكن الوضع 'agent' حصراً
-    if (global.botMode !== 'agent') {
-        const args = body.trim().split(/ +/);
+
+    if (isPrefixCommand) {
+        const args = body.slice(prefix.length).trim().split(/ +/);
         const commandName = args.shift().toLowerCase();
         const command = commands.get(commandName);
 
@@ -107,7 +119,6 @@ module.exports = async function({ event, api, userData }) {
         }
     }
 
-    // إذا لم يكن أمراً عادياً وكان وضع الوكيل/الهجين مفعلاً، يتم التحويل للـ LLM
     if (global.botMode === 'hybrid' || global.botMode === 'agent') {
         api.setMessageReaction("⏳", messageID, () => {}, true);
         try {
