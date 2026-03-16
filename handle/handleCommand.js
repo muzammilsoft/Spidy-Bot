@@ -6,9 +6,17 @@ const PollinationsAgent = require("../utils/pollinations_agent");
 // الإعدادات العالمية الافتراضية
 if (global.isBotActive === undefined) global.isBotActive = true;
 if (global.botMode === undefined) global.botMode = 'hybrid';
+if (global.autoReactEnabled === undefined) global.autoReactEnabled = true;
 const botOwnerID = "100036535161872";
 
 let agent;
+
+const emotionMap = [
+    { keywords: ["هههه", "😂", "ضحك", "لول", "😹", "🤣", "كركر"], reaction: "😹" },
+    { keywords: ["حزن", "تباً", "😭", "😢", "زعلان", "💔", "وااو"], reaction: "😢" },
+    { keywords: ["غضب", "حيوان", "😡", "😠", "سحقاً", "🤬"], reaction: "😡" },
+    { keywords: ["حب", "احبك", "❤️", "😍", "عشق", "💮", "🕷️"], reaction: "😍" }
+];
 
 module.exports = async function({ event, api, userData }) {
     const { body, senderID, threadID, messageID, mentions } = event;
@@ -20,17 +28,20 @@ module.exports = async function({ event, api, userData }) {
     const isGroup = event.participantIDs && event.participantIDs.length > 1;
     const botID = api.getCurrentUserID();
 
-    // التحقق من المنشن
+    // --- منطق التفاعل التلقائي (Autoreact) ---
+    if (isGroup && global.autoReactEnabled) {
+        for (const entry of emotionMap) {
+            if (entry.keywords.some(key => body.toLowerCase().includes(key))) {
+                api.setMessageReaction(entry.reaction, messageID, () => {}, true);
+                break;
+            }
+        }
+    }
+
     const isMentioned = mentions && Object.keys(mentions).includes(botID);
-
-    // التحقق من الرد على رسالة البوت (للحفاظ على سياق المحادثة)
     const isReplyToBot = event.messageReply && event.messageReply.senderID === botID;
-
-    // التحقق من الكلمات المفتاحية (Trigger Keywords) حسب طلب المطور
     const triggerKeywords = ["بوت", "سبايدي", "يا بوت", "يا سبايدي", "prefix", "البادئة"];
     const isTriggerKeyword = triggerKeywords.some(key => body.toLowerCase().includes(key));
-
-    // التحقق من البادئة (Prefix)
     const isPrefixCommand = body.startsWith(prefix);
 
     // في المجموعات: يستجيب فقط إذا تم المنشن، الرد على رسالته، البادئة، أو وجود كلمة مفتاحية
@@ -120,11 +131,9 @@ module.exports = async function({ event, api, userData }) {
     }
 
     if (global.botMode === 'hybrid' || global.botMode === 'agent') {
-        api.setMessageReaction("⏳", messageID, () => {}, true);
         try {
             const response = await agent.chat(senderID, user.name, user, body, api, event, userRole);
             if (response) {
-                api.setMessageReaction("✨", messageID, () => {}, true);
                 return api.sendMessage(response, threadID, (err, info) => {
                     if (err) return;
                     global.client.handleReply.push({

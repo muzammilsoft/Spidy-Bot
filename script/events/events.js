@@ -24,7 +24,7 @@ module.exports.handleEvent = async function({ api, event }) {
             case "log:subscribe":
                 if (logMessageData.addedParticipants.some(p => p.userFbId === botID)) {
                     try {
-                        await api.changeNickname(`[ . ] • Spidy Bot`, threadID, botID);
+                        await api.changeNickname(`Spidy Bot`, threadID, botID);
                     } catch (e) {
                         console.error("فشل تغيير الكنية:", e);
                     }
