@@ -42,7 +42,7 @@ module.exports = async function({ event, api, userData }) {
     }
 
     const isMentioned = mentions && Object.keys(mentions).includes(botID);
-    const isReplyToBot = event.messageReply && event.messageReply.senderID === botID;
+    const isReplyToBot = event.type === "message_reply" && event.messageReply && event.messageReply.senderID === botID;
     const triggerKeywords = ["بوت", "سبايدي", "يا بوت", "يا سبايدي", "prefix", "البادئة"];
     const isTriggerKeyword = triggerKeywords.some(key => body.toLowerCase().includes(key));
     const isPrefixCommand = body.startsWith(prefix);
@@ -136,7 +136,7 @@ module.exports = async function({ event, api, userData }) {
     if (global.botMode === 'hybrid' || global.botMode === 'agent') {
         // إظهار مؤشر الكتابة عند بدء معالجة الذكاء الاصطناعي
         let stopTyping;
-        try { stopTyping = api.sendTypingIndicator(threadID); } catch (e) {}
+        try { stopTyping = api.sendTypingIndicator(threadID, () => {}); } catch (e) {}
 
         try {
             const response = await agent.chat(senderID, user.name, user, body, api, event, userRole);
