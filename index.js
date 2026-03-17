@@ -38,7 +38,7 @@ app.get('/', (req, res) => {
     `);
 });
 
-app.listen(port, () => {
+app.listen(port, "0.0.0.0", () => {
     logger.info(`السيرفر يعمل على المنفذ: ${port}`);
 });
 
