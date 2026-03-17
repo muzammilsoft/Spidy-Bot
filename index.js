@@ -2,6 +2,7 @@ const login = require('ws3-fca');
 const fs = require('fs-extra');
 const path = require('path');
 const express = require('express');
+const axios = require('axios');
 const logger = require('./utils/logger');
 const config = require('./config.json');
 const minHandle = require('./handle/minHandle');
@@ -14,18 +15,23 @@ app.get('/', (req, res) => {
     res.send(`
         <html>
             <head>
-                <title>Mirror Bot Status</title>
+                <title>${global.client.config.BOTNAME} Status</title>
                 <style>
-                    body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f0f2f5; margin: 0; }
-                    .card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; }
-                    .status { color: #4caf50; font-weight: bold; }
+                    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #0e1117; color: white; margin: 0; }
+                    .card { background: #161b22; padding: 2.5rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center; border: 1px solid #30363d; }
+                    .status { color: #238636; font-weight: bold; }
+                    h1 { color: #58a6ff; margin-bottom: 0.5rem; }
+                    p { color: #8b949e; }
+                    .uptime { font-family: monospace; color: #d29922; }
                 </style>
             </head>
             <body>
                 <div class="card">
-                    <h1>Mirror Bot [ ${global.client.config.BOTNAME} ]</h1>
-                    <p>Status: <span class="status">Online</span></p>
-                    <p>Uptime monitoring ready for Uptime Robot.</p>
+                    <h1>${global.client.config.BOTNAME} [ v${require('./package.json').version} ]</h1>
+                    <p>Status: <span class="status">Online & Ready</span></p>
+                    <p>Uptime monitoring active for <span class="uptime">Uptime Robot</span></p>
+                    <hr style="border: 0; border-top: 1px solid #30363d; margin: 1.5rem 0;">
+                    <p style="font-size: 0.8rem;">Developed by <span style="color: #f85149;">KG / Khartoum Ghoul</span></p>
                 </div>
             </body>
         </html>
@@ -47,6 +53,12 @@ global.client = {
     api: null,
     startTime: Date.now()
 };
+
+// تهيئة المتغيرات العالمية الأخرى
+if (global.frozenThreads === undefined) global.frozenThreads = new Set();
+if (global.isBotActive === undefined) global.isBotActive = true;
+if (global.botMode === undefined) global.botMode = 'hybrid';
+if (global.activeProcesses === undefined) global.activeProcesses = new Map();
 
 /**
  * دالة تحميل الأوامر والأحداث من المجلدات
@@ -84,9 +96,9 @@ function loadScripts() {
 }
 
 /**
- * الدالة الرئيسية لتشغيل محرك ميرور
+ * الدالة الرئيسية لتشغيل محرك سبايدي
  */
-async function startMirror() {
+async function startSpidy() {
     logger.info("جاري فحص ملف الجلسة (appstate.json)...");
 
     try {
@@ -110,20 +122,28 @@ async function startMirror() {
             // عرض اللوغو ومعلومات البوت بعد نجاح تسجيل الدخول
             logger.banner();
             logger.success(`بوت [ ${config.BOTNAME} ] متصل الآن بنجاح!`);
-            logger.hakim("نظام المراقبة مفعل. الاستماع للأوامر بدأ...");
+            logger.kg("نظام المراقبة مفعل. الاستماع للأوامر بدأ...");
 
-            api.listenMqtt(async (err, event) => {
+            // آلية الـ Keep-Alive للبقاء أونلاين على الاستضافات المجانية
+            setInterval(() => {
+                const url = process.env.RENDER_EXTERNAL_URL || `http://localhost:${port}`;
+                axios.get(url).catch(() => {});
+            }, 5 * 60 * 1000); // كل 5 دقائق
+
+            api.listenMqtt((err, event) => {
                 if (err) {
                     logger.error("خطأ في الاستماع (Listen Error). جاري إعادة التشغيل...", err);
                     return restartBot();
                 }
 
-                try {
-                    // تمرير الحدث والـ api للمعالج الرئيسي
-                    await minHandle({ event, api });
-                } catch (handleErr) {
-                    logger.error("خطأ في معالجة الحدث داخل minHandle:", handleErr);
-                }
+                // معالجة الأحداث بشكل غير متزامن للسماح بالتعددية (Concurrency)
+                setImmediate(async () => {
+                    try {
+                        await minHandle({ event, api });
+                    } catch (handleErr) {
+                        logger.error("خطأ في معالجة الحدث داخل minHandle:", handleErr);
+                    }
+                });
             });
         });
 
@@ -135,7 +155,7 @@ async function startMirror() {
 
 function restartBot() {
     logger.warn("جاري إعادة تشغيل النظام الآن...");
-    process.exit(2); // رمز خروج مخصص لنظام start.js لإعادة التشغيل الفوري
+    process.exit(2);
 }
 
 process.on('unhandledRejection', (err) => {
@@ -146,4 +166,4 @@ process.on('uncaughtException', (err) => {
     logger.error("خطأ غير متوقع (Uncaught Exception):", err);
 });
 
-startMirror();
+startSpidy();

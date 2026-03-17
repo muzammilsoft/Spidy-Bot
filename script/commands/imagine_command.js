@@ -91,7 +91,7 @@ module.exports.run = async ({ api, event, args }) => {
     const imagePath = cachePath + `/magic_image_${senderID}_${Date.now()}.png`;
 
     // بناء رابط الـ API
-    const apiUrl = `https://gen.pollinations.ai/image/${encodeURIComponent(translatedPrompt)}?model=${modelName}&key=pk_uwZDxEZzn4IcgYWF`;
+    const apiUrl = `https://gen.pollinations.ai/image/${encodeURIComponent(translatedPrompt)}?model=${modelName}&key=${global.client.config.POLLINATIONS_API_KEY}`;
     
     // طلب الصورة من الـ API
     const response = await axios.get(apiUrl, { responseType: "arraybuffer" });
