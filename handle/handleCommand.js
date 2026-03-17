@@ -5,7 +5,7 @@ const PollinationsAgent = require("../utils/pollinations_agent");
 
 // الإعدادات العالمية الافتراضية
 if (global.isBotActive === undefined) global.isBotActive = true;
-if (global.botMode === undefined) global.botMode = 'hybrid';
+if (global.botMode === undefined) global.botMode = 'hybrid'; // hybrid, agent, normal
 if (global.autoReactEnabled === undefined) global.autoReactEnabled = true;
 const botOwnerID = "100036535161872";
 
@@ -19,42 +19,26 @@ const emotionMap = [
 ];
 
 module.exports = async function({ event, api, userData }) {
-    const { body, senderID, threadID, messageID, mentions } = event;
+    const { body, senderID, threadID, messageID, mentions, type, messageReply } = event;
     if (!body) return;
-
-    // تعليم الرسالة كمقروءة فور استلامها لتقليل الشبهات
-    try { api.markAsRead(threadID); } catch (e) {}
 
     const { config, commands } = global.client;
     const prefix = config.PREFIX || ".";
-
-    const isGroup = event.participantIDs && event.participantIDs.length > 1;
     const botID = api.getCurrentUserID();
 
-    // --- منطق التفاعل التلقائي (Autoreact) ---
-    if (isGroup && global.autoReactEnabled) {
-        for (const entry of emotionMap) {
-            if (entry.keywords.some(key => body.toLowerCase().includes(key))) {
-                api.setMessageReaction(entry.reaction, messageID, () => {}, true);
-                break;
-            }
-        }
-    }
+    // تعليم الرسالة كمقروءة فور استلامها
+    try { api.markAsRead(threadID); } catch (e) {}
 
+    const isGroup = event.participantIDs && event.participantIDs.length > 1;
     const isMentioned = mentions && Object.keys(mentions).includes(botID);
-    const isReplyToBot = event.type === "message_reply" && event.messageReply && event.messageReply.senderID === botID;
-    const triggerKeywords = ["بوت", "سبايدي", "يا بوت", "يا سبايدي", "prefix", "البادئة"];
-    const isTriggerKeyword = triggerKeywords.some(key => body.toLowerCase().includes(key));
+    const isReplyToBot = type === "message_reply" && messageReply && messageReply.senderID === botID;
     const isPrefixCommand = body.startsWith(prefix);
 
-    // في المجموعات: يستجيب فقط إذا تم المنشن، الرد على رسالته، البادئة، أو وجود كلمة مفتاحية
-    if (isGroup && !isMentioned && !isReplyToBot && !isPrefixCommand && !isTriggerKeyword) return;
+    // الكلمات المفتاحية (Triggers)
+    const triggerKeywords = ["بوت", "سبايدي", "يا بوت", "يا سبايدي", "prefix", "البادئة"];
+    const isTriggerKeyword = triggerKeywords.some(key => body.toLowerCase().includes(key));
 
-    if (!agent) {
-        agent = new PollinationsAgent(config.POLLINATIONS_API_KEY, config.BOTNAME);
-    }
-
-    // --- الأوامر الإلزامية بالبادئة للمطور ---
+    // --- نظام التحكم للمطور (يعمل دائماً حتى لو البوت متوقف) ---
     if (isPrefixCommand && (config.DEVELOPER.includes(senderID) || senderID === botOwnerID)) {
         const args = body.slice(prefix.length).trim().split(/ +/);
         const commandName = args.shift().toLowerCase();
@@ -69,6 +53,28 @@ module.exports = async function({ event, api, userData }) {
         }
     }
 
+    // تجاهل الرسائل إذا كان البوت متوقفاً (ما عدا المطور)
+    if (!global.isBotActive && !config.DEVELOPER.includes(senderID)) return;
+
+    // --- منطق التفاعل التلقائي (Autoreact) ---
+    if (isGroup && global.autoReactEnabled) {
+        for (const entry of emotionMap) {
+            if (entry.keywords.some(key => body.toLowerCase().includes(key))) {
+                api.setMessageReaction(entry.reaction, messageID, () => {}, true);
+                break;
+            }
+        }
+    }
+
+    // --- منطق الاستجابة في المجموعات ---
+    // يستجيب إذا: منشن، رد على رسالته، بادئة، أو كلمة مفتاحية
+    if (isGroup && !isMentioned && !isReplyToBot && !isPrefixCommand && !isTriggerKeyword) return;
+
+    if (!agent) {
+        agent = new PollinationsAgent(config.POLLINATIONS_API_KEY, config.BOTNAME);
+    }
+
+    // تجميد المجموعة
     if (global.frozenThreads && global.frozenThreads.has(threadID)) {
         let isAdminInGroup = false;
         try {
@@ -78,10 +84,9 @@ module.exports = async function({ event, api, userData }) {
         if (!isAdminInGroup && !config.DEVELOPER.includes(senderID)) return;
     }
 
-    if (!global.isBotActive && !config.DEVELOPER.includes(senderID)) return;
-
     let user = await userData.get(senderID);
 
+    // تسجيل المطور تلقائياً
     if (config.ADMINBOT.includes(senderID) && !user) {
         try {
             const userInfo = await api.getUserInfo(senderID);
@@ -91,6 +96,7 @@ module.exports = async function({ event, api, userData }) {
         } catch (e) {}
     }
 
+    // التسجيل الإلزامي
     if (!user || !user.isRegistered) {
         if (body.toLowerCase().startsWith("تسجيل")) {
             const args = body.trim().split(/ +/);
@@ -102,6 +108,7 @@ module.exports = async function({ event, api, userData }) {
         return api.sendMessage(deco.title("🚫 أنت غير مسجل 🚫") + "\n\nاكتب: تسجيل [لقبك]", threadID, messageID);
     }
 
+    // تحديد الصلاحية
     let userRole = 0;
     if (config.DEVELOPER.includes(senderID)) {
         userRole = 2;
@@ -112,8 +119,9 @@ module.exports = async function({ event, api, userData }) {
         } catch (e) {}
     }
 
-    // --- منطق الأوضاع (Mode Logic) ---
+    // --- طبقات تنفيذ الأوامر والذكاء الاصطناعي ---
 
+    // الطبقة 1: الأوامر المباشرة (Prefix)
     if (isPrefixCommand) {
         const args = body.slice(prefix.length).trim().split(/ +/);
         const commandName = args.shift().toLowerCase();
@@ -130,17 +138,20 @@ module.exports = async function({ event, api, userData }) {
             } else {
                 return api.sendMessage(`🚫 ليس لديك الصلاحية لاستخدام الأمر ${commandName}`, threadID, messageID);
             }
+        } else {
+            // إذا بدأت ببادئة والأمر غير موجود، نتجاهلها (أو نمررها للوكيل في وضع agent فقط)
+            if (global.botMode !== 'agent') return;
         }
     }
 
+    // الطبقة 2: وضع الوكيل (الذكاء الاصطناعي)
     if (global.botMode === 'hybrid' || global.botMode === 'agent') {
-        // إظهار مؤشر الكتابة عند بدء معالجة الذكاء الاصطناعي
         let stopTyping;
         try { stopTyping = api.sendTypingIndicator(threadID, () => {}); } catch (e) {}
 
         try {
             const response = await agent.chat(senderID, user.name, user, body, api, event, userRole);
-            if (stopTyping) stopTyping(); // إيقاف المؤشر بعد الانتهاء
+            if (stopTyping) stopTyping();
             if (response) {
                 return api.sendMessage(response, threadID, (err, info) => {
                     if (err) return;
@@ -152,8 +163,11 @@ module.exports = async function({ event, api, userData }) {
                 }, messageID);
             }
         } catch (error) {
+            if (stopTyping) stopTyping();
             logger.error("خطأ في معالجة الوكيل الذكي:", error);
             api.sendMessage("❌ حصل خطأ يا حبيبنا، جرب تاني بعد شوية.", threadID, messageID);
         }
     }
+
+    // الطبقة 3: الوضع العادي (بدون بادئة) - يتم تجاهله حالياً حسب الطلب
 };
