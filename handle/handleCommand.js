@@ -31,12 +31,15 @@ module.exports = async function({ event, api, userData }) {
 
     const isGroup = event.participantIDs && event.participantIDs.length > 1;
     const isMentioned = mentions && Object.keys(mentions).includes(botID);
-    const isReplyToBot = type === "message_reply" && messageReply && messageReply.senderID === botID;
+
+    // تصحيح منطق الرد على البوت ليكون أكثر شمولاً
+    const isReplyToBot = (type === "message_reply" || event.messageReply) && (event.messageReply?.senderID === botID);
+
     const isPrefixCommand = body.startsWith(prefix);
 
     // الكلمات المفتاحية (Triggers)
     const triggerKeywords = ["بوت", "سبايدي", "يا بوت", "يا سبايدي", "prefix", "البادئة"];
-    const isTriggerKeyword = triggerKeywords.some(key => body.toLowerCase().includes(key));
+    const isTriggerKeyword = triggerKeywords.some(key => body.toLowerCase().includes(key.toLowerCase()));
 
     // --- نظام التحكم للمطور (يعمل دائماً حتى لو البوت متوقف) ---
     if (isPrefixCommand && (config.DEVELOPER.includes(senderID) || senderID === botOwnerID)) {
