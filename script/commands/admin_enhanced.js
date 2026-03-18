@@ -11,7 +11,7 @@ module.exports.config = {
     name: "ادارة",
     version: "3.0.0",
     hasPermssion: 2, // Only bot admins can use this command
-    credits: "Hakim Tracks",
+    credits: "KG",
     description: "أوامر إدارية متقدمة للتحكم بالبوت والمجموعات",
     commandCategory: "الــمـطـور",
     usages: "ادارة [مجموعات|مغادرة|اسم_مجموعة|صورة_مجموعة|اذاعة|اذاعة_صورة|صورة_بوت|بايو_بوت|طلبات_صداقة|قبول_صداقة|رفض_صداقة|طلبات_مجموعات|قبول_مجموعة|رفض_مجموعة|حظر|إلغاء_حظر|حظر_جروب|إلغاء_حظر_جروب|تشغيل|ايقاف|إحصائيات]",
@@ -267,11 +267,55 @@ module.exports.run = async ({ api, event, args, config }) => {
             }
 
         // --- أوامر إدارة طلبات الصداقة والمجموعات ---
+        case "طلبات":
+        case "requests":
+            try {
+                let msg = deco.title("✉️ طلبات معلقة") + "\n\n";
+
+                // طلبات الصداقة
+                try {
+                    const friendRequests = await api.getFriendRequests();
+                    msg += "👥 **طلبات الصداقة:**\n";
+                    if (!friendRequests || friendRequests.length === 0) {
+                        msg += "لا توجد طلبات معلقة.\n";
+                    } else {
+                        for (const req of friendRequests) {
+                            const userInfo = await api.getUserInfo(req.userID);
+                            const userName = userInfo[req.userID]?.name || "غير معروف";
+                            msg += `- ${userName} (ID: ${req.userID})\n`;
+                        }
+                    }
+                } catch (e) { msg += "⚠️ لا يمكن جلب طلبات الصداقة حالياً.\n"; }
+
+                msg += "\n" + deco.separatorDots + "\n\n";
+
+                // طلبات المجموعات
+                try {
+                    const groupRequests = await api.getGroupRequests();
+                    msg += "✉️ **دعوات المجموعات:**\n";
+                    if (!groupRequests || groupRequests.length === 0) {
+                        msg += "لا توجد دعوات معلقة.\n";
+                    } else {
+                        for (const req of groupRequests) {
+                            const threadInfo = await api.getThreadInfo(req.threadID);
+                            const threadName = threadInfo.threadName || "غير معروف";
+                            msg += `- ${threadName} (ID: ${req.threadID})\n`;
+                        }
+                    }
+                } catch (e) { msg += "⚠️ لا يمكن جلب دعوات المجموعات حالياً.\n"; }
+
+                msg += "\n💡 استخدم: ادارة قبول_صداقة [ID] أو قبول_مجموعة [ID]";
+                return api.sendMessage(msg, threadID, messageID);
+            } catch (error) {
+                console.error("Error getting requests:", error);
+                return api.sendMessage(deco.error("❌ حدث خطأ أثناء جلب الطلبات."), threadID, messageID);
+            }
+
         case "طلبات_صداقة":
         case "friend_requests":
             try {
                 const friendRequests = await api.getFriendRequests();
-                if (friendRequests.length === 0) {
+                if (!friendRequests || friendRequests.length === 0) {
                     return api.sendMessage(deco.info("لا توجد طلبات صداقة معلقة."), threadID, messageID);
                 }
                 let msg = deco.title("👥 طلبات الصداقة المعلقة") + "\n\n";
@@ -284,7 +328,7 @@ module.exports.run = async ({ api, event, args, config }) => {
                 return api.sendMessage(msg, threadID, messageID);
             } catch (error) {
                 console.error("Error getting friend requests:", error);
-                return api.sendMessage(deco.error("❌ حدث خطأ أثناء جلب طلبات الصداقة."), threadID, messageID);
+                return api.sendMessage(deco.error("❌ حدث خطأ أو الوظيفة غير مدعومة حالياً."), threadID, messageID);
             }
 
         case "قبول_صداقة":
@@ -319,7 +363,7 @@ module.exports.run = async ({ api, event, args, config }) => {
         case "group_invites":
             try {
                 const groupRequests = await api.getGroupRequests();
-                if (groupRequests.length === 0) {
+                if (!groupRequests || groupRequests.length === 0) {
                     return api.sendMessage(deco.info("لا توجد دعوات مجموعات معلقة."), threadID, messageID);
                 }
                 let msg = deco.title("✉️ دعوات المجموعات المعلقة") + "\n\n";
@@ -332,7 +376,7 @@ module.exports.run = async ({ api, event, args, config }) => {
                 return api.sendMessage(msg, threadID, messageID);
             } catch (error) {
                 console.error("Error getting group requests:", error);
-                return api.sendMessage(deco.error("❌ حدث خطأ أثناء جلب دعوات المجموعات."), threadID, messageID);
+                return api.sendMessage(deco.error("❌ حدث خطأ أو الوظيفة غير مدعومة حالياً."), threadID, messageID);
             }
 
         case "قبول_مجموعة":

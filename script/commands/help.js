@@ -17,8 +17,8 @@ module.exports.config = {
 const IMAGE_URL = "https://i.postimg.cc/63mNPW7q/20260307-211107.jpg";
 const LOCAL_IMG_PATH = path.join(__dirname, "img", "menu.png");
 const FALLBACK_IMG_PATH = path.join(__dirname, "cache", "menu.jpg");
-const BOT_NAME = "Mirror Bot";
-const DEVELOPER_NAME = "Hakim Tracks";
+const BOT_NAME = "Spidy";
+const DEVELOPER_NAME = "KG";
 
 async function getImageStream() {
   if (fs.existsSync(LOCAL_IMG_PATH)) {
@@ -50,35 +50,47 @@ module.exports.run = async function({ api, event, args }) {
   }
 
   if (args.length === 0) {
-    // --- عرض قائمة الأوامر الرئيسية بزخارف محسّنة ---
-    const grouped = {};
+    // --- عرض قائمة الأوامر الرئيسية بتصميم سبايدي الجديد ---
+    const categories = {
+        "زكـــــــاء": [],
+        "الــعــاب": [],
+        "نظام": [],
+        "الــمـطـور": [],
+        "إدارة المجموعة": [],
+        "الادمــــن": [],
+        "عـــامـة": []
+    };
+
     for (const [name, cmd] of uniqueCommands.entries()) {
-      const cat = cmd.config.commandCategory || "بدون فئة";
-      if (!grouped[cat]) grouped[cat] = [];
-      grouped[cat].push(name);
+        const cat = cmd.config.commandCategory;
+        if (categories[cat]) {
+            categories[cat].push(name);
+        } else {
+            if (!categories["عـــامـة"]) categories["عـــامـة"] = [];
+            categories["عـــامـة"].push(name);
+        }
     }
 
-    let msg = deco.title("قـائمـة الاوامــر") + "\n\n";
-    
-    msg += "✨ أنا ميرور، وكيلتك الذكية! يمكنك التحدث معي مباشرة دون أي بادئة (Prefix). ✨\n\n";
+    let msg = "╮───────∙⋆⋅ ※ ⋅⋆∙───────╭\n";
+    msg += "    قـــائــمــة الاوامـــــر\n";
+    msg += "╯───────∙⋆⋅ ※ ⋅⋆∙───────╰\n\n";
 
-    for (const [category, list] of Object.entries(grouped)) {
-      msg += deco.titleGolden(category) + "\n";
-      
-      let commandLines = [];
-      for (let i = 0; i < list.length; i += 2) {
-        const chunk = list.slice(i, i + 2);
-        commandLines.push(deco.line(chunk.join("  ○  ")));
-      }
-      msg += commandLines.join('\n') + "\n";
-      msg += deco.separatorDots + "\n\n";
+    for (const [category, list] of Object.entries(categories)) {
+        if (list.length === 0) continue;
+        msg += `╮──────∙⋆⋅「 ${category} 」\n`;
+        let lines = [];
+        for (let i = 0; i < list.length; i += 3) {
+            lines.push(`│ › ${list.slice(i, i + 3).join('  ›  ')}`);
+        }
+        msg += lines.join('\n') + "\n";
+        msg += "╯───────∙⋆⋅ ※ ⋅⋆∙───────◈\n\n";
     }
 
-    msg += deco.title(`الأوامر الكلية: ${uniqueCommands.size}
-اسم البوت: ${BOT_NAME}
-المالك: ${DEVELOPER_NAME}
-💡 للمزيد من المعلومات:
-اكتب: مساعدة [اسم الأمر]`);
+    msg += "╮───────∙⋆⋅ ※ ⋅⋆∙───────◈\n";
+    msg += `│ الاوامــر : ${uniqueCommands.size}\n`;
+    msg += `│ اســم الــبــوت : ${BOT_NAME}\n`;
+    msg += `│ الــمــالــلك : ${DEVELOPER_NAME}\n`;
+    msg += "│ اسـتـخــدم : مساعدة [اسم الامر] ╯───────∙⋆⋅ ※ ⋅⋆∙───────◈";
 
     try {
       const imageStream = await getImageStream();

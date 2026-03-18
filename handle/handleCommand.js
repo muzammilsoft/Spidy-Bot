@@ -38,7 +38,7 @@ module.exports = async function({ event, api, userData }) {
     console.log(`[ DEBUG ] Msg: "${body.slice(0,20)}" | Group: ${isGroup} | Mention: ${isMentioned} | ReplyBot: ${isReplyToBot} | BotID: ${botID}`);
 
     const isPrefixCommand = body.startsWith(prefix);
-    const triggerKeywords = ["بوت", "سبايدي", "يا بوت", "يا سبايدي", "prefix", "البادئة"];
+    const triggerKeywords = ["بوت", "سبايدي", "يا بوت", "يا سبايدي", "bot", "spidy", "prefix", "بادئة", "البادئة"];
     const isTriggerKeyword = triggerKeywords.some(key => body.toLowerCase().includes(key.toLowerCase()));
 
     // --- نظام التحكم للمطور (يعمل دائماً) ---
