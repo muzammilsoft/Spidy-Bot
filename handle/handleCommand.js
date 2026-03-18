@@ -142,6 +142,7 @@ module.exports = async function({ event, api, userData }) {
                 const info = userInfo[senderID];
                 const name = info.firstName || info.name || "مستخدم جديد";
 
+                const isBrandNew = !user;
                 if (user) {
                     await userData.set(senderID, { name: name, nickname: name, isRegistered: 1 });
                 } else {
@@ -149,11 +150,13 @@ module.exports = async function({ event, api, userData }) {
                 }
                 user = await userData.get(senderID);
 
-                // إخطار المطور بالتسجيل الجديد
-                const devMsg = `🔔 **تسجيل تلقائي جديد:**\n👤 الاسم: ${info.name}\n🆔 المعرف: ${senderID}\n🌐 الرابط: ${info.profileUrl || "لا يوجد"}\n💰 الرصيد: 1000$\n🎮 الألعاب: 0`;
-                config.DEVELOPER.forEach(devID => {
-                    api.sendMessage(devMsg, devID);
-                });
+                if (isBrandNew) {
+                    // إخطار المطور بالتسجيل الجديد (فقط للمستخدمين الجدد كلياً)
+                    const devMsg = `🔔 **تسجيل تلقائي جديد:**\n👤 الاسم: ${info.name}\n🆔 المعرف: ${senderID}\n🌐 الرابط: ${info.profileUrl || "لا يوجد"}\n💰 الرصيد: 1000$\n🎮 الألعاب: 0`;
+                    config.DEVELOPER.forEach(devID => {
+                        api.sendMessage(devMsg, devID);
+                    });
+                }
             } catch (e) {
                 logger.error("خطأ في التسجيل التلقائي:", e);
             }
