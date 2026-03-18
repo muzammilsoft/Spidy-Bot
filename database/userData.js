@@ -85,11 +85,11 @@ module.exports = {
         db.prepare("UPDATE users SET extraData = ? WHERE id = ?").run(JSON.stringify(extra), id);
     },
 
-    create: async (id, name, nickname = "") => {
+    create: async (id, name, nickname = "", isRegistered = 0) => {
         const url = await getAvatarUrl(id);
         await downloadAvatar(id, url);
         const stmt = db.prepare("INSERT INTO users (id, name, nickname, createDate, isRegistered) VALUES (?, ?, ?, ?, ?)");
-        stmt.run(id, name, nickname, Date.now(), nickname ? 1 : 0);
+        stmt.run(id, name, nickname, Date.now(), isRegistered);
         logger.loader(`مستخدم جديد: ${name} [${id}]`, 'event');
     },
 

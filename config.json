@@ -4,6 +4,7 @@
   "DEVELOPER": ["100036535161872"],
   "ADMINS": ["100036535161872"],
   "BOTNAME": "Spidy",
+  "autoRegistration": true,
   "POLLINATIONS_API_KEY": "sk_tuZ0F2v830RQxq6DFPaG5KE1rT5cka31", 
   "fcaOptions": {
     "online": true, 

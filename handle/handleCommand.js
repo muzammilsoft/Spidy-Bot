@@ -54,6 +54,28 @@ module.exports = async function({ event, api, userData }) {
             global.isBotActive = true;
             return api.sendMessage("✅ تم تشغيل البوت بنجاح.. عاد الأسد للعمل ヽʕ•͡-•ʔﾉ", threadID, messageID);
         }
+        if (commandName === "الوكيل") {
+            const mode = args[0] || "hybrid";
+            global.botMode = mode;
+            return api.sendMessage(`✅ تم تغيير وضع البوت إلى: ${mode}`, threadID, messageID);
+        }
+        if (commandName === "مساعدة") {
+            let msg = "🕸️ **أوامر المطور الإلزامية:** 🕸️\n\n";
+            msg += ".تشغيل - تفعيل البوت\n";
+            msg += ".ايقاف - تعطيل البوت\n";
+            msg += ".الوكيل [hybrid/agent/normal] - تغيير وضع الذكاء الاصطناعي\n";
+            msg += ".اعدادات - عرض إعدادات البوت الحالية\n";
+            return api.sendMessage(msg, threadID, messageID);
+        }
+        if (commandName === "اعدادات") {
+            let msg = "⚙️ **إعدادات سبايدي:** ⚙️\n\n";
+            msg += `🤖 الاسم: ${config.BOTNAME}\n`;
+            msg += `📡 الحالة: ${global.isBotActive ? "نشط" : "متوقف"}\n`;
+            msg += `🧠 الوضع: ${global.botMode}\n`;
+            msg += `📝 التسجيل التلقائي: ${config.autoRegistration ? "مفعل" : "معطل"}\n`;
+            msg += `😊 التفاعل التلقائي: ${global.autoReactEnabled ? "مفعل" : "معطل"}\n`;
+            return api.sendMessage(msg, threadID, messageID);
+        }
     }
 
     if (!global.isBotActive && !config.DEVELOPER.includes(senderID)) return;
@@ -97,14 +119,32 @@ module.exports = async function({ event, api, userData }) {
     }
 
     if (!user || !user.isRegistered) {
-        if (body.toLowerCase().startsWith("تسجيل")) {
-            const args = body.trim().split(/ +/);
-            args.shift();
-            const registerCmd = commands.get("تسجيل");
-            if (registerCmd) return registerCmd.run({ api, event, args, permission: 0, userData, user, commands, config });
+        if (config.autoRegistration) {
+            try {
+                const userInfo = await api.getUserInfo(senderID);
+                const info = userInfo[senderID];
+                const name = info.firstName || info.name || "مستخدم جديد";
+                await userData.create(senderID, name, name, 1);
+                user = await userData.get(senderID);
+
+                // إخطار المطور بالتسجيل الجديد
+                const devMsg = `🔔 **تسجيل تلقائي جديد:**\n👤 الاسم: ${info.name}\n🆔 المعرف: ${senderID}\n🌐 الرابط: ${info.profileUrl || "لا يوجد"}\n💰 الرصيد: 1000$\n🎮 الألعاب: 0`;
+                config.DEVELOPER.forEach(devID => {
+                    api.sendMessage(devMsg, devID);
+                });
+            } catch (e) {
+                logger.error("خطأ في التسجيل التلقائي:", e);
+            }
+        } else {
+            if (body.toLowerCase().startsWith("تسجيل")) {
+                const args = body.trim().split(/ +/);
+                args.shift();
+                const registerCmd = commands.get("تسجيل");
+                if (registerCmd) return registerCmd.run({ api, event, args, permission: 0, userData, user, commands, config });
+            }
+            const deco = require('../utils/decorations');
+            return api.sendMessage(deco.title("🚫 أنت غير مسجل 🚫") + "\n\nاكتب: تسجيل [لقبك]", threadID, messageID);
         }
-        const deco = require('../utils/decorations');
-        return api.sendMessage(deco.title("🚫 أنت غير مسجل 🚫") + "\n\nاكتب: تسجيل [لقبك]", threadID, messageID);
     }
 
     let userRole = 0;
