@@ -8,7 +8,7 @@ module.exports = async function({ event, api }) {
     if (!event) return;
 
     // تسجيل الحدث للمطور
-    console.log(`[ EVENT RECEIVED ] Type: ${event.type} | Sender: ${event.senderID} | Thread: ${event.threadID} | Body: ${event.body || 'N/A'}`);
+    logger.info(`EVENT: Type: ${event.type} | Sender: ${event.senderID} | Thread: ${event.threadID} | Body: ${event.body || 'N/A'}`);
 
     // تشغيل handleEvent لجميع الأوامر التي تدعمها (مثل الحماية)
     for (const [name, command] of global.client.commands) {

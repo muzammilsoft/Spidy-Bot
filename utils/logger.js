@@ -1,4 +1,14 @@
 const chalk = require('chalk');
+const fs = require('fs');
+const path = require('path');
+
+const logFilePath = path.join(__dirname, '../logs.txt');
+
+function appendToFile(type, msg) {
+    const timestamp = new Date().toISOString();
+    const logEntry = `[${timestamp}] [${type.toUpperCase()}] ${msg}\n`;
+    fs.appendFileSync(logFilePath, logEntry);
+}
 
 const colors = {
     spidy: chalk.bold.hex('#00E5FF'),
@@ -38,19 +48,27 @@ const logger = {
 
     info: (msg) => {
         console.log(`${colors.info(' [ INFO ] ')} ${chalk.white(msg)}`);
+        appendToFile('info', msg);
     },
 
     warn: (msg) => {
         console.log(`${colors.warn(' [ WARN ] ')} ${chalk.white(msg)}`);
+        appendToFile('warn', msg);
     },
 
     error: (msg, err) => {
         console.log(`${colors.error(' [ ERROR ] ')} ${chalk.white(msg)}`);
-        if (err) console.error(chalk.redBright(err));
+        if (err) {
+            console.error(chalk.redBright(err));
+            appendToFile('error', `${msg} | ${err.message || err}`);
+        } else {
+            appendToFile('error', msg);
+        }
     },
 
     success: (msg) => {
         console.log(`${colors.info(' [ SUCCESS ] ')} ${chalk.bold.greenBright(msg)} ✨`);
+        appendToFile('success', msg);
     },
 
     loader: (msg, type) => {
@@ -61,10 +79,12 @@ const logger = {
             default: color = colors.spidy;
         }
         console.log(`${color(` [ ${type?.toUpperCase() || 'LOAD'} ] `)} ${chalk.white(msg)}`);
+        appendToFile(type || 'loader', msg);
     },
 
     kg: (msg) => {
         console.log(`${colors.kg(' [ KG ] ')} ${chalk.magentaBright(msg)} 🔥`);
+        appendToFile('kg', msg);
     }
 };
 

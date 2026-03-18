@@ -65,6 +65,8 @@ module.exports = async function({ event, api, userData }) {
             msg += ".ايقاف - تعطيل البوت\n";
             msg += ".الوكيل [hybrid/agent/normal] - تغيير وضع الذكاء الاصطناعي\n";
             msg += ".اعدادات - عرض إعدادات البوت الحالية\n";
+            msg += ".سجلات - عرض آخر 10 سجلات\n";
+            msg += ".مسح_السجلات - تفريغ ملف السجلات\n";
             return api.sendMessage(msg, threadID, messageID);
         }
         if (commandName === "اعدادات") {
@@ -75,6 +77,21 @@ module.exports = async function({ event, api, userData }) {
             msg += `📝 التسجيل التلقائي: ${config.autoRegistration ? "مفعل" : "معطل"}\n`;
             msg += `😊 التفاعل التلقائي: ${global.autoReactEnabled ? "مفعل" : "معطل"}\n`;
             return api.sendMessage(msg, threadID, messageID);
+        }
+        if (commandName === "سجلات") {
+            const fs = require('fs');
+            const path = require('path');
+            const logFilePath = path.join(__dirname, '../logs.txt');
+            if (!fs.existsSync(logFilePath)) return api.sendMessage("❌ لا يوجد ملف سجلات حالياً.", threadID, messageID);
+            const logs = fs.readFileSync(logFilePath, 'utf8').split('\n').filter(Boolean).slice(-10).join('\n');
+            return api.sendMessage(`📋 **آخر 10 سجلات:**\n\n${logs}`, threadID, messageID);
+        }
+        if (commandName === "مسح_السجلات") {
+            const fs = require('fs');
+            const path = require('path');
+            const logFilePath = path.join(__dirname, '../logs.txt');
+            fs.writeFileSync(logFilePath, '');
+            return api.sendMessage("✅ تم مسح ملف السجلات بنجاح.", threadID, messageID);
         }
     }
 
@@ -124,7 +141,12 @@ module.exports = async function({ event, api, userData }) {
                 const userInfo = await api.getUserInfo(senderID);
                 const info = userInfo[senderID];
                 const name = info.firstName || info.name || "مستخدم جديد";
-                await userData.create(senderID, name, name, 1);
+
+                if (user) {
+                    await userData.set(senderID, { name: name, nickname: name, isRegistered: 1 });
+                } else {
+                    await userData.create(senderID, name, name, 1);
+                }
                 user = await userData.get(senderID);
 
                 // إخطار المطور بالتسجيل الجديد
@@ -182,7 +204,7 @@ module.exports = async function({ event, api, userData }) {
 
     if (global.botMode === 'hybrid' || global.botMode === 'agent') {
         let stopTyping;
-        try { stopTyping = api.sendTypingIndicator(threadID, () => {}); } catch (e) {}
+        try { stopTyping = api.sendTypingIndicator(threadID, (err) => { if (err) console.error("Typing indicator error:", err); }); } catch (e) {}
 
         try {
             const response = await agent.chat(senderID, user.name, user, body, api, event, userRole);

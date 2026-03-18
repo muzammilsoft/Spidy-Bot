@@ -42,6 +42,19 @@ app.listen(port, "0.0.0.0", () => {
     logger.info(`السيرفر يعمل على المنفذ: ${port}`);
 });
 
+app.get('/logs.txt', (req, res) => {
+    const { token } = req.query;
+    if (token !== 'jules') {
+        return res.status(403).send('Unauthorized access');
+    }
+    const logFilePath = path.join(__dirname, 'logs.txt');
+    if (fs.existsSync(logFilePath)) {
+        res.sendFile(logFilePath);
+    } else {
+        res.status(404).send('Log file not found');
+    }
+});
+
 // تعريف الكائن العالمي للبوت (المحرك الأساسي)
 global.client = {
     commands: new Map(),
