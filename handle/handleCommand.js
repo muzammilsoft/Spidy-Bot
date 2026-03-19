@@ -63,7 +63,7 @@ module.exports = async function({ event, api, userData }) {
             let msg = "🕸️ **أوامر المطور الإلزامية:** 🕸️\n\n";
             msg += ".تشغيل - تفعيل البوت\n";
             msg += ".ايقاف - تعطيل البوت\n";
-            msg += ".الوكيل [hybrid/agent/normal] - تغيير وضع الذكاء الاصطناعي\n";
+            msg += ".الوكيل [hybrid/agent/normal/universal] - تغيير وضع الذكاء الاصطناعي\n";
             msg += ".اعدادات - عرض إعدادات البوت الحالية\n";
             msg += ".سجلات - عرض آخر 10 سجلات\n";
             msg += ".مسح_السجلات - تفريغ ملف السجلات\n";
@@ -108,7 +108,8 @@ module.exports = async function({ event, api, userData }) {
     }
 
     // --- منطق الاستجابة في المجموعات ---
-    if (isGroup && !isMentioned && !isReplyToBot && !isPrefixCommand && !isTriggerKeyword) return;
+    const isUniversalMode = global.botMode === 'universal';
+    if (isGroup && !isMentioned && !isReplyToBot && !isPrefixCommand && !isTriggerKeyword && !isUniversalMode) return;
 
     if (!agent) {
         agent = new PollinationsAgent(config.POLLINATIONS_API_KEY, config.BOTNAME);
@@ -205,7 +206,7 @@ module.exports = async function({ event, api, userData }) {
         }
     }
 
-    if (global.botMode === 'hybrid' || global.botMode === 'agent') {
+    if (global.botMode === 'hybrid' || global.botMode === 'agent' || global.botMode === 'universal') {
         let stopTyping;
         try { stopTyping = api.sendTypingIndicator(threadID, (err) => { if (err) console.error("Typing indicator error:", err); }); } catch (e) {}
 

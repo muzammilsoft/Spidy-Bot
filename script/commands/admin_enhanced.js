@@ -128,16 +128,16 @@ module.exports.run = async ({ api, event, args, config }) => {
 
         case "مغادرة":
         case "leave":
-            if (args.length < 2) {
-                return api.sendMessage(deco.error("الاستخدام: ادارة مغادرة [threadID]"), threadID, messageID);
-            }
-            const leaveThreadID = args[1];
+            const leaveThreadID = args[1] || threadID;
             try {
-                await api.removeUserFromGroup(api.getCurrentUserID(), leaveThreadID);
-                return api.sendMessage(deco.success(`✅ تم مغادرة المجموعة بنجاح: ${leaveThreadID}`), threadID, messageID);
+                return api.sendMessage("👋 مع السلامة يا شباب، طالع من هنا..", leaveThreadID, () => {
+                    api.removeUserFromGroup(api.getCurrentUserID(), leaveThreadID, (err) => {
+                        if (err) return api.sendMessage(`❌ فشل المغادرة: ${err.message || err}`, threadID, messageID);
+                    });
+                });
             } catch (error) {
                 console.error("Error leaving group:", error);
-                return api.sendMessage(deco.error(`❌ فشل مغادرة المجموعة: ${leaveThreadID}. قد يكون البوت ليس عضواً فيها أو حدث خطأ آخر.`), threadID, messageID);
+                return api.sendMessage(deco.error(`❌ فشل مغادرة المجموعة: ${leaveThreadID}.`), threadID, messageID);
             }
 
         case "اسم_مجموعة":
@@ -183,16 +183,20 @@ module.exports.run = async ({ api, event, args, config }) => {
             }
             const broadcastMessage = args.slice(1).join(" ");
             try {
-                const threadList = await api.getThreadList(200, null, ["INBOX"]);
+                const threadList = await api.getThreadList(400, null, ["INBOX", "PENDING", "OTHER"]);
                 let sentCount = 0;
                 for (const thread of threadList) {
-                    if (thread.isGroup && thread.threadID !== threadID) { // Exclude current thread
-                        await api.sendMessage(broadcastMessage, thread.threadID);
-                        sentCount++;
-                        await new Promise(resolve => setTimeout(resolve, 1000)); // Delay to avoid rate limits
+                    if (thread.threadID !== threadID) {
+                        await new Promise(resolve => {
+                            api.sendMessage(broadcastMessage, thread.threadID, (err) => {
+                                if (!err) sentCount++;
+                                resolve();
+                            });
+                        });
+                        await new Promise(resolve => setTimeout(resolve, 2000));
                     }
                 }
-                return api.sendMessage(deco.success(`✅ تم إرسال الإذاعة إلى ${sentCount} مجموعة بنجاح.`), threadID, messageID);
+                return api.sendMessage(deco.success(`✅ تم إرسال الإذاعة إلى ${sentCount} محادثة بنجاح.`), threadID, messageID);
             } catch (error) {
                 console.error("Error broadcasting message:", error);
                 return api.sendMessage(deco.error("❌ حدث خطأ أثناء إرسال الإذاعة."), threadID, messageID);
@@ -269,6 +273,8 @@ module.exports.run = async ({ api, event, args, config }) => {
         // --- أوامر إدارة طلبات الصداقة والمجموعات ---
         case "طلبات":
         case "requests":
+        case "طلبات_مجموعات":
+        case "group_invites":
             try {
                 let msg = deco.title("✉️ طلبات معلقة") + "\n\n";
 
@@ -289,19 +295,16 @@ module.exports.run = async ({ api, event, args, config }) => {
 
                 msg += "\n" + deco.separatorDots + "\n\n";
 
-                // طلبات المجموعات
+                // طلبات المجموعات (PENDING threads are where invites usually are)
                 try {
-                    const groupRequests = await api.getGroupRequests();
-                    msg += "✉️ **دعوات المجموعات:**\n";
-                    if (!groupRequests || groupRequests.length === 0) {
-                        msg += "لا توجد دعوات معلقة.\n";
-                    } else {
-                        for (const req of groupRequests) {
-                            const threadInfo = await api.getThreadInfo(req.threadID);
-                            const threadName = threadInfo.threadName || "غير معروف";
-                            msg += `- ${threadName} (ID: ${req.threadID})\n`;
-                        }
+                    const threadList = await api.getThreadList(50, null, ["PENDING", "OTHER"]);
+                    msg += "✉️ **دعوات المجموعات / الرسائل:**\n";
+                    let count = 0;
+                    for (const thread of threadList) {
+                        msg += `- ${thread.name || "مجموعة غير معروفة"} (ID: ${thread.threadID})\n`;
+                        count++;
                     }
+                    if (count === 0) msg += "لا توجد دعوات معلقة.\n";
                 } catch (e) { msg += "⚠️ لا يمكن جلب دعوات المجموعات حالياً.\n"; }
 
                 msg += "\n💡 استخدم: ادارة قبول_صداقة [ID] أو قبول_مجموعة [ID]";
@@ -386,8 +389,11 @@ module.exports.run = async ({ api, event, args, config }) => {
             }
             const acceptGroupID = args[1];
             try {
-                await api.handleGroupRequest(acceptGroupID, true);
-                return api.sendMessage(deco.success(`✅ تم قبول دعوة المجموعة ${acceptGroupID} بنجاح.`), threadID, messageID);
+                // handleMessageRequest is often what works for pending threads
+                api.handleMessageRequest(acceptGroupID, true, (err) => {
+                    if (err) return api.sendMessage(`❌ فشل القبول: ${err.message || err}`, threadID, messageID);
+                    return api.sendMessage(deco.success(`✅ تم قبول دعوة المجموعة ${acceptGroupID} بنجاح.`), threadID, messageID);
+                });
             } catch (error) {
                 console.error("Error accepting group invite:", error);
                 return api.sendMessage(deco.error(`❌ فشل قبول دعوة المجموعة ${acceptGroupID}.`), threadID, messageID);
