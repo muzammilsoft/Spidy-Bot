@@ -112,15 +112,30 @@ function loadScripts() {
  * الدالة الرئيسية لتشغيل محرك سبايدي
  */
 async function startSpidy() {
-    logger.info("جاري فحص ملف الجلسة (appstate.json)...");
+    logger.info("جاري فحص حالة التطبيق (APPSTATE)...");
 
     try {
-        const appStatePath = path.join(__dirname, 'appstate.json');
-        if (!fs.existsSync(appStatePath)) {
-            throw new Error("ملف appstate.json غير موجود! يرجى وضعه في المجلد الرئيسي.");
+        let appState;
+        if (process.env.APPSTATE) {
+            try {
+                appState = JSON.parse(process.env.APPSTATE);
+                logger.info("تم تحميل الجلسة من متغير البيئة APPSTATE");
+            } catch (e) {
+                logger.error("فشل تحليل JSON من متغير البيئة APPSTATE", e);
+            }
         }
 
-        const appState = await fs.readJSON(appStatePath);
+        if (!appState) {
+            const appStatePath = path.join(__dirname, 'appstate.json');
+            if (fs.existsSync(appStatePath)) {
+                appState = await fs.readJSON(appStatePath);
+                logger.info("تم تحميل الجلسة من ملف appstate.json المحلي");
+            }
+        }
+
+        if (!appState) {
+            throw new Error("لم يتم العثور على جلسة صالحة في متغير البيئة APPSTATE أو ملف appstate.json المحلي!");
+        }
         loadScripts(); 
 
         login({ appState }, (err, api) => {
